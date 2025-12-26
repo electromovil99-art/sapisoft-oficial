@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Landmark, Plus, Trash2, Search, Building2, CreditCard, ArrowRightLeft, X, ArrowRight, Edit3, Lock, Check, ShoppingCart, ShoppingBag } from 'lucide-react';
+import { Landmark, Plus, Trash2, Search, Building2, CreditCard, ArrowRightLeft, X, ArrowRight, Edit3, Lock, Check, ShoppingCart, ShoppingBag, Hash } from 'lucide-react';
 import { BankAccount } from '../types';
 
 interface BankAccountsModuleProps {
@@ -8,7 +8,8 @@ interface BankAccountsModuleProps {
     onAddBankAccount: (b: BankAccount) => void;
     onUpdateBankAccount: (account: BankAccount) => void;
     onDeleteBankAccount: (id: string) => void;
-    onUniversalTransfer: (from: string, to: string, amount: number, exchangeRate: number, reference: string) => void;
+    // Updated to expect 6 arguments to match App.tsx
+    onUniversalTransfer: (from: string, to: string, amount: number, exchangeRate: number, reference: string, opNumber: string) => void;
 }
 
 export const BankAccountsModule: React.FC<BankAccountsModuleProps> = ({ bankAccounts, onAddBankAccount, onUpdateBankAccount, onDeleteBankAccount, onUniversalTransfer }) => {
@@ -21,8 +22,9 @@ export const BankAccountsModule: React.FC<BankAccountsModuleProps> = ({ bankAcco
     const [adminPassword, setAdminPassword] = useState('');
     
     // Transfer Modal State
+    // Updated transferData to include opNumber
     const [showTransferModal, setShowTransferModal] = useState(false);
-    const [transferData, setTransferData] = useState({ from: '', to: '', amount: '', rate: '', reference: '' });
+    const [transferData, setTransferData] = useState({ from: '', to: '', amount: '', rate: '', reference: '', opNumber: '' });
 
     const filteredBanks = bankAccounts.filter(item => 
         (item.bankName && item.bankName.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -67,7 +69,7 @@ export const BankAccountsModule: React.FC<BankAccountsModuleProps> = ({ bankAcco
     };
 
     const handleOpenTransferModal = () => {
-        setTransferData({ from: '', to: '', amount: '', rate: '', reference: '' });
+        setTransferData({ from: '', to: '', amount: '', rate: '', reference: '', opNumber: '' });
         setShowTransferModal(true);
     };
 
@@ -82,8 +84,10 @@ export const BankAccountsModule: React.FC<BankAccountsModuleProps> = ({ bankAcco
         if (!transferData.from || !transferData.to) return alert("Debe seleccionar cuenta de origen y destino.");
         if (isNaN(amountNum) || amountNum <= 0) return alert("Monto inválido.");
         if (showExchangeRate && (isNaN(rateNum) || rateNum <= 0)) return alert("Tipo de cambio inválido.");
+        if (!transferData.opNumber) return alert("Ingrese el Nro de Operación.");
 
-        onUniversalTransfer(transferData.from, transferData.to, amountNum, rateNum, transferData.reference);
+        // Call with 6 arguments as expected by App.tsx
+        onUniversalTransfer(transferData.from, transferData.to, amountNum, rateNum, transferData.reference, transferData.opNumber);
         setShowTransferModal(false);
     };
 
@@ -245,9 +249,18 @@ export const BankAccountsModule: React.FC<BankAccountsModuleProps> = ({ bankAcco
                                     </div>
                                 )}
                             </div>
-                            <div>
-                                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Referencia / Glosa</label>
-                                <input type="text" className="w-full p-2 border rounded-lg text-sm bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white" value={transferData.reference} onChange={e => setTransferData({...transferData, reference: e.target.value})} placeholder="Ej. Capital de trabajo"/>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Nro. Operación / CCI</label>
+                                    <div className="relative">
+                                        <Hash className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={16}/>
+                                        <input type="text" className="w-full pl-9 p-3 border rounded-lg text-sm bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white uppercase font-bold outline-none focus:border-blue-500" value={transferData.opNumber} onChange={e => setTransferData({...transferData, opNumber: e.target.value})} placeholder="Ej. 123456"/>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Referencia / Glosa (Opcional)</label>
+                                    <input type="text" className="w-full p-2 border rounded-lg text-sm bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white" value={transferData.reference} onChange={e => setTransferData({...transferData, reference: e.target.value})} placeholder="Ej. Capital de trabajo"/>
+                                </div>
                             </div>
                             <button onClick={handleExecuteTransfer} className="w-full mt-2 py-3 bg-blue-600 text-white font-bold rounded-xl font-black uppercase text-xs tracking-widest transition-all shadow-lg hover:bg-blue-700">Confirmar Transferencia</button>
                         </div>

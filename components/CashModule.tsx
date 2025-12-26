@@ -217,7 +217,8 @@ const CashBoxManager: React.FC<{
                                         bankRefs.current[0]?.select();
                                     }
                                 }}
-                                inputRef={(el) => { inputRefs.current[idx] = el; }}
+                                // FIX: Added explicit typing for el and ensured the callback returns void to satisfy RefCallback<HTMLInputElement>
+                                inputRef={(el: HTMLInputElement | null) => { inputRefs.current[idx] = el; }}
                             />
                         ))}
                     </div>

@@ -134,9 +134,8 @@ export const HistoryQueries: React.FC<HistoryQueriesProps> = ({ salesHistory, pu
                 if (sale) {
                     const isNC = (ncIdMatch || ref.includes('NC #'));
                     
-                    // CORRECCIÓN: Si es Nota de Crédito y viene del historial de producto,
-                    // mostramos SOLO el producto y la cantidad del movimiento actual (ej: 2 en vez de 3)
-                    const itemsToShow = isNC && activeTab === 'historial_producto' 
+                    // Explicitly typed itemsToShow to avoid CartItem union type inference issues
+                    const itemsToShow: any[] = isNC && activeTab === 'historial_producto' 
                         ? [{ 
                             name: item.productName || 'PRODUCTO', 
                             quantity: item.quantity, 
@@ -145,10 +144,11 @@ export const HistoryQueries: React.FC<HistoryQueriesProps> = ({ salesHistory, pu
                           }]
                         : sale.items;
 
+                    // FIX: Typed 'acc' as number and 'curr' as any in reduce to ensure correct overload selection and avoid type mismatch with initial value 0.
                     setLinkedRecord({ 
                         ...sale, 
                         items: itemsToShow,
-                        total: itemsToShow.reduce((acc, curr) => acc + (curr.price * curr.quantity), 0),
+                        total: itemsToShow.reduce((acc: number, curr: any) => acc + (curr.price * curr.quantity), 0),
                         type: isNC ? 'CREDIT_NOTE' : 'SALE',
                         customLabel: isNC ? `NOTA DE CRÉDITO` : sale.docType,
                         displayId: ncIdMatch ? ncIdMatch[1] : (originalTicketFromNC ? `DEV-${originalTicketFromNC[1]}` : sale.id),
