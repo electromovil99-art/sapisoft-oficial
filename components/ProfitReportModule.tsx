@@ -1,7 +1,9 @@
+
 import React, { useMemo, useState } from 'react';
 import { SaleRecord, CashMovement, Product } from '../types';
 import { PieChart, DollarSign, TrendingDown, TrendingUp, BarChart, Award, Lightbulb, Brain, RefreshCw, Info, Target } from 'lucide-react';
-import { GoogleGenerativeAI } from "@google/generative-ai";
+// Fixed: Import GoogleGenAI from @google/genai
+import { GoogleGenAI } from "@google/genai";
 
 const DailyProfitChart: React.FC<{ data: { day: string; profit: number }[] }> = ({ data }) => {
     const maxProfit = Math.max(...data.map(d => d.profit), 1);
@@ -102,9 +104,8 @@ const ProfitReportModule: React.FC<{ salesHistory: SaleRecord[], cashMovements: 
     const runAiAnalysis = async () => {
         setIsAnalyzing(true);
         try {
-            // Cambio importante para Vercel/Vite
-            const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY || "");
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            // Fixed: Initialize GoogleGenAI with process.env.API_KEY
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
             const prompt = `Analiza estos datos financieros de mi negocio:
             - Ventas Totales: S/ ${profitData.totalSales}
@@ -115,12 +116,17 @@ const ProfitReportModule: React.FC<{ salesHistory: SaleRecord[], cashMovements: 
             
             Dame 3 consejos estratégicos muy breves y directos para aumentar la utilidad el próximo mes. Sé profesional y usa terminología contable básica.`;
 
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
-            setAiInsight(response.text());
+            // Fixed: Call generateContent directly on ai.models and use recommended model
+            const response = await ai.models.generateContent({
+                model: "gemini-3-flash-preview",
+                contents: prompt,
+            });
+            
+            // Fixed: Access .text property directly
+            setAiInsight(response.text || "No se pudo generar un análisis.");
         } catch (error) {
             console.error("Error IA:", error);
-            setAiInsight("No se pudo conectar con el motor de IA. Verifique que VITE_GEMINI_API_KEY esté configurada en Vercel.");
+            setAiInsight("No se pudo conectar con el motor de IA. Verifique que la API_KEY esté configurada.");
         } finally {
             setIsAnalyzing(false);
         }

@@ -1,7 +1,9 @@
+
 import React, { useState, useMemo } from 'react';
 import { ShieldCheck, History, Brain, TrendingDown, TrendingUp, AlertTriangle, Search, Eye, X, ArrowRight, DollarSign, Calculator, Lock, Info, RotateCcw } from 'lucide-react';
 import { InventoryHistorySession, Product } from '../types';
-import { GoogleGenerativeAI } from "@google/generative-ai";
+// Fixed: Import GoogleGenAI from @google/genai
+import { GoogleGenAI } from "@google/genai";
 
 interface InventoryAuditModuleProps {
     history: InventoryHistorySession[];
@@ -43,9 +45,8 @@ const InventoryAuditModule: React.FC<InventoryAuditModuleProps> = ({ history, pr
         setAiAnalysis(null);
 
         try {
-            // Usamos VITE_GEMINI_API_KEY que es el estándar para Vite/Vercel
-            const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY || "");
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            // Fixed: Initialize GoogleGenAI with process.env.API_KEY
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             
             // Preparar data compacta para la IA
             const historySummary = history.slice(0, 5).map(s => ({
@@ -62,13 +63,18 @@ const InventoryAuditModule: React.FC<InventoryAuditModuleProps> = ({ history, pr
             3. Riesgo de manipulación de sistema por parte de usuarios.
             Sé crítico, usa lenguaje profesional pero directo. No alucines, si los datos son pocos, menciónalo pero da una hipótesis.`;
 
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
-            setAiAnalysis(response.text());
+            // Fixed: Call generateContent directly on ai.models and use recommended model
+            const response = await ai.models.generateContent({
+                model: "gemini-3-flash-preview",
+                contents: prompt,
+            });
+
+            // Fixed: Access .text property directly
+            setAiAnalysis(response.text || "No se pudo generar una auditoría IA.");
 
         } catch (error) {
             console.error("Error AI Audit:", error);
-            setAiAnalysis("Error al conectar con el cerebro de auditoría. Verifique que la API Key esté configurada como VITE_GEMINI_API_KEY en Vercel.");
+            setAiAnalysis("Error al conectar con el cerebro de auditoría. Verifique que la API_KEY esté configurada.");
         } finally {
             setIsAnalyzing(false);
         }

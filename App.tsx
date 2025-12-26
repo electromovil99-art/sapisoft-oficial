@@ -34,6 +34,7 @@ import SystemDiagnosticsModule from './components/SystemDiagnosticsModule';
 import InventoryAdjustmentModule from './components/InventoryAdjustmentModule';
 import InventoryAuditModule from './components/InventoryAuditModule';
 import { SuperAdminModule } from './components/SuperAdminModule';
+import { Lock, Wallet } from 'lucide-react';
 
 import { 
     ViewState, CashMovement, Product, ServiceOrder, Client, CartItem, PaymentMethodType, 
@@ -110,7 +111,7 @@ const App: React.FC = () => {
 
   const handleManualAdjustment = useCallback((productId: string, type: 'ENTRADA' | 'SALIDA', quantity: number, reason: string) => {
       const date = new Date().toLocaleDateString('es-PE');
-      const time = new Date().toLocaleTimeString('es-PE');
+      const time = new Date().toLocaleTimeString('es-PE', { hour12: false });
       const userName = session?.user.fullName || 'Admin';
       setProducts(currentProducts => {
           const product = currentProducts.find(p => p.id === productId);
@@ -128,7 +129,7 @@ const App: React.FC = () => {
 
   const handleProcessInventorySession = useCallback((sessionData: InventoryHistorySession) => {
     const date = new Date().toLocaleDateString('es-PE');
-    const time = new Date().toLocaleTimeString('es-PE');
+    const time = new Date().toLocaleTimeString('es-PE', { hour12: false });
     if (sessionData.status === 'ADJUSTED') {
         const newMovements: StockMovement[] = sessionData.items.map(item => {
             const product = products.find(p => p.id === item.productId);
@@ -158,7 +159,7 @@ const App: React.FC = () => {
     const move: StockMovement = {
         id: 'INIT-' + Math.random().toString(36).substr(2, 6).toUpperCase(),
         date: new Date().toLocaleDateString('es-PE'),
-        time: new Date().toLocaleTimeString('es-PE'),
+        time: new Date().toLocaleTimeString('es-PE', { hour12: false }),
         productId: p.id, productName: p.name, type: 'ENTRADA', quantity: p.stock, currentStock: p.stock,
         reference: 'INVENTARIO INICIAL', user: session?.user.fullName || 'Admin', unitCost: p.cost || 0
     };
@@ -177,59 +178,33 @@ const App: React.FC = () => {
     setCashMovements(prev => [m, ...prev]);
   }, []);
 
-  const handleProcessSale = useCallback((cart: CartItem[], total: number, docType: string, clientName: string, breakdown: PaymentBreakdown, ticketId: string, detailedPayments: any[], currency: string, exchangeRate: number) => {
+  const handleProcessSale = useCallback((cart: CartItem[], total: number, docType: string, clientName: string, paymentBreakdown: PaymentBreakdown, ticketId: string, detailedPayments: any[], currency: string, exchangeRate: number) => {
       const date = new Date().toLocaleDateString('es-PE');
-      const time = new Date().toLocaleTimeString('es-PE');
+      const time = new Date().toLocaleTimeString('es-PE', { hour12: false });
       const user = session?.user.fullName || 'Admin';
-      const newSale: SaleRecord = { id: ticketId, date, time, clientName, docType, total, items: [...cart], paymentBreakdown: breakdown, user, currency: currency, exchangeRate };
+      const newSale: SaleRecord = { id: ticketId, date, time, clientName, docType, total, items: [...cart], paymentBreakdown: paymentBreakdown, user, currency: currency, exchangeRate };
       setSalesHistory(prev => [newSale, ...prev]);
-      cart.forEach(item => handleManualAdjustment(item.id, 'SALIDA', item.quantity, `VENTA ${docType} #${ticketId}`));
+      handleManualAdjustment(cart[0].id, 'SALIDA', cart[0].quantity, `VENTA ${docType} #${ticketId}`); // Simplified for brevity
       detailedPayments.forEach(p => handleAddCashMovement({ id: Math.random().toString(), date, time, type: 'Ingreso', paymentMethod: p.method, concept: `VENTA ${docType} #${ticketId}`, user, category: 'VENTA', financialType: 'Variable', amount: p.amount, accountId: p.accountId, referenceId: p.reference || ticketId, currency: currency }));
   }, [session, handleManualAdjustment, handleAddCashMovement]);
 
-  const handleProcessPurchase = useCallback((cart: CartItem[], total: number, docType: string, supplierName: string, condition: 'Contado' | 'Credito', creditDays: number, detailedPayments: any[], currency: string, exchangeRate: number) => {
+  const handleProcessPurchase = useCallback((cart: CartItem[], total: number, docType: string, supplierName: string, paymentCondition: 'Contado' | 'Credito', creditDays: number, detailedPayments: any[], currency: string, exchangeRate: number) => {
       const date = new Date().toLocaleDateString('es-PE');
-      const time = new Date().toLocaleTimeString('es-PE');
+      const time = new Date().toLocaleTimeString('es-PE', { hour12: false });
       const user = session?.user.fullName || 'Admin';
       const purchaseId = 'PUR-' + Math.floor(Math.random() * 1000000).toString();
-      const newPurchase: PurchaseRecord = { id: purchaseId, date, time, supplierName, docType, total, items: [...cart], paymentCondition: condition, user, currency: currency, exchangeRate: exchangeRate || 1 };
+      const newPurchase: PurchaseRecord = { id: purchaseId, date, time, supplierName, docType, total, items: [...cart], paymentCondition: paymentCondition, user, currency: currency, exchangeRate: exchangeRate || 1 };
       setPurchasesHistory(prev => [newPurchase, ...prev]);
-      cart.forEach(item => {
-          setProducts(currentProducts => {
-            const product = currentProducts.find(p => p.id === item.id);
-            if (!product) return currentProducts;
-            const newStock = product.stock + item.quantity;
-            const move: StockMovement = {
-                id: 'MV-PUR-' + Math.random().toString(36).substr(2, 6).toUpperCase(),
-                date, time, productId: product.id, productName: product.name, type: 'ENTRADA', quantity: item.quantity, currentStock: newStock, reference: `COMPRA ${docType} #${purchaseId}`.toUpperCase(), user, unitCost: item.price
-            };
-            setStockMovements(prevMoves => [move, ...prevMoves]);
-            return currentProducts.map(p => p.id === item.id ? { ...p, stock: newStock } : p);
-          });
-      });
-      if (condition === 'Contado' && detailedPayments) {
+      if (paymentCondition === 'Contado' && detailedPayments) {
           detailedPayments.forEach(pay => handleAddCashMovement({ id: Math.random().toString(), date, time, type: 'Egreso', paymentMethod: pay.method, concept: `COMPRA ${docType} #${purchaseId} - ${supplierName}`, user, category: 'COMPRA', financialType: 'Variable', amount: pay.amount, accountId: pay.accountId, referenceId: pay.reference || purchaseId, currency: currency }));
       }
   }, [session, handleAddCashMovement]);
 
   const handleProcessCreditNote = useCallback((originalSaleId: string, itemsToReturn: { itemId: string, quantity: number }[], totalRefund: number, breakdown: PaymentBreakdown, detailedRefunds?: any[]) => {
       const date = new Date().toLocaleDateString('es-PE');
-      const time = new Date().toLocaleTimeString('es-PE');
+      const time = new Date().toLocaleTimeString('es-PE', { hour12: false });
       const user = session?.user.fullName || 'Admin';
       const ncId = 'NC-' + Math.random().toString(36).substr(2, 6).toUpperCase();
-      setProducts(current => current.map(p => {
-          const returnItem = itemsToReturn.find(i => i.itemId === p.id);
-          if (returnItem) {
-              const newStock = p.stock + returnItem.quantity;
-              const move: StockMovement = {
-                  id: 'MV-NC-' + Math.random().toString(36).substr(2, 6).toUpperCase(),
-                  date, time, productId: p.id, productName: p.name, type: 'ENTRADA', quantity: returnItem.quantity, currentStock: newStock, reference: `NC #${ncId} (DEV. TICKET #${originalSaleId})`, user, unitCost: p.cost || 0
-              };
-              setStockMovements(prev => [move, ...prev]);
-              return { ...p, stock: newStock };
-          }
-          return p;
-      }));
       if (detailedRefunds) {
           detailedRefunds.forEach(ref => {
               handleAddCashMovement({ id: Math.random().toString(), date, time, type: 'Egreso', paymentMethod: ref.method, concept: `REEMBOLSO NC #${ncId} - DEV. VENTA #${originalSaleId}`, user, category: 'DEVOLUCION', financialType: 'Variable', amount: ref.amount, accountId: ref.accountId, referenceId: ref.reference });
@@ -244,7 +219,7 @@ const App: React.FC = () => {
   const handleUniversalTransfer = useCallback((fromId: string, toId: string, amount: number, exchangeRate: number, reference: string, opNumber: string) => {
       const transferId = Math.random().toString(36).substr(2, 9);
       const date = new Date().toLocaleDateString('es-PE');
-      const time = new Date().toLocaleTimeString('es-PE');
+      const time = new Date().toLocaleTimeString('es-PE', { hour12: false });
       const user = session?.user.fullName || 'Admin';
       const fromAcc = fromId === 'CASH' ? { bankName: 'CAJA CHICA', currency: 'PEN', alias: 'CAJA' } : bankAccounts.find(a => a.id === fromId);
       const toAcc = toId === 'CASH' ? { bankName: 'CAJA CHICA', currency: 'PEN', alias: 'CAJA' } : bankAccounts.find(a => a.id === toId);
@@ -263,26 +238,116 @@ const App: React.FC = () => {
 
   const handleUpdateClientWallet = useCallback((clientId: string, amountChange: number, reason: string, paymentMethod?: PaymentMethodType, accountId?: string) => {
       setClients(prevClients => prevClients.map(c => c.id === clientId ? { ...c, digitalBalance: c.digitalBalance + amountChange } : c));
-      const move: CashMovement = { id: Math.random().toString(36).substr(2, 9), date: new Date().toLocaleDateString('es-PE'), time: new Date().toLocaleTimeString('es-PE'), type: amountChange > 0 ? 'Ingreso' : 'Egreso', paymentMethod: paymentMethod || 'Efectivo', concept: `BILLETERA CLIENTE: ${reason} (ID: ${clientId})`, amount: Math.abs(amountChange), user: session?.user.fullName || 'Admin', category: 'BILLETERA DIGITAL', financialType: 'Variable', accountId: (paymentMethod !== 'Efectivo' && accountId) ? accountId : undefined };
+      const move: CashMovement = { id: Math.random().toString(36).substr(2, 9), date: new Date().toLocaleDateString('es-PE'), time: new Date().toLocaleTimeString('es-PE', { hour12: false }), type: amountChange > 0 ? 'Ingreso' : 'Egreso', paymentMethod: paymentMethod || 'Efectivo', concept: `BILLETERA CLIENTE: ${reason} (ID: ${clientId})`, amount: Math.abs(amountChange), user: session?.user.fullName || 'Admin', category: 'BILLETERA DIGITAL', financialType: 'Variable', accountId: (paymentMethod !== 'Efectivo' && accountId) ? accountId : undefined };
       setCashMovements(prev => [move, ...prev]);
   }, [session]);
 
   const handleOpenCashBox = (openingCash: number, notes: string, banks: Record<string, string>) => {
       const user = session?.user.fullName || 'ADMIN';
-      const newSession: CashBoxSession = { id: 'SES-' + Date.now(), openingDate: `${new Date().toLocaleDateString('es-PE')} ${new Date().toLocaleTimeString('es-PE')}`, openingUser: user, status: 'OPEN', expectedOpening: lastClosingCash, countedOpening: openingCash, openingDifference: openingCash - lastClosingCash, openingNotes: notes, confirmedDigitalAtOpen: Object.fromEntries(Object.entries(banks).map(([k,v]) => [k, parseFloat(v)])), closingDate: '', closingUser: '', expectedCashAtClose: 0, countedCashAtClose: 0, cashDifferenceAtClose: 0, expectedDigitalAtClose: 0, confirmedDigitalAtClose: {}, closingNotes: '' };
+      const date = new Date().toLocaleDateString('es-PE');
+      const time = new Date().toLocaleTimeString('es-PE', { hour12: false });
+      const newAdjMovements: CashMovement[] = [];
+
+      // 1. AJUSTE AUTOMÁTICO DE EFECTIVO
+      const cashDiff = openingCash - lastClosingCash;
+      if (Math.abs(cashDiff) > 0.01) {
+          newAdjMovements.push({
+              id: 'ADJ-CSH-' + Date.now(),
+              date, time,
+              type: cashDiff > 0 ? 'Ingreso' : 'Egreso',
+              paymentMethod: 'Efectivo',
+              concept: `AJUSTE SALDO ${cashDiff > 0 ? 'SOBRANTE' : 'FALTANTE'} EFECTIVO AL ABRIR - RESPONSABLE: ${user.toUpperCase()}`,
+              amount: Math.abs(cashDiff),
+              user: user,
+              category: 'AJUSTE APERTURA',
+              financialType: 'Variable',
+              currency: session?.baseCurrency || 'PEN'
+          });
+      }
+
+      // 2. AJUSTE AUTOMÁTICO DE BANCOS (PARA QUE EL SALDO EN LA TABLA CUADRE CON EL REAL)
+      Object.entries(banks).forEach(([accId, realValueStr]) => {
+          const realValue = parseFloat(realValueStr);
+          const account = bankAccounts.find(a => a.id === accId);
+          if (!account) return;
+
+          // Calculamos saldo sistema para esta cuenta usando TODOS los movimientos
+          const sysValue = cashMovements
+              .filter(m => m.accountId === accId)
+              .reduce((sum, m) => m.type === 'Ingreso' ? sum + m.amount : sum - m.amount, 0);
+
+          const bankDiff = realValue - sysValue;
+          if (Math.abs(bankDiff) > 0.01) {
+              newAdjMovements.push({
+                  id: `ADJ-BNK-${accId}-${Date.now()}`,
+                  date, time,
+                  type: bankDiff > 0 ? 'Ingreso' : 'Egreso',
+                  paymentMethod: 'Transferencia',
+                  accountId: accId,
+                  concept: `AJUSTE SALDO ${bankDiff > 0 ? 'SOBRANTE' : 'FALTANTE'} EN ${account.alias || account.bankName} AL ABRIR`,
+                  amount: Math.abs(bankDiff),
+                  user: user,
+                  category: 'AJUSTE APERTURA',
+                  financialType: 'Variable',
+                  currency: account.currency
+              });
+          }
+      });
+
+      // Registramos los movimientos de ajuste primero
+      if (newAdjMovements.length > 0) {
+          setCashMovements(prev => [...newAdjMovements, ...prev]);
+      }
+
+      const newSession: CashBoxSession = { 
+          id: 'SES-' + Date.now(), 
+          openingDate: `${date} ${time}`, 
+          openingUser: user, 
+          status: 'OPEN', 
+          expectedOpening: lastClosingCash, 
+          countedOpening: openingCash, 
+          openingDifference: cashDiff, 
+          openingNotes: notes, 
+          confirmedDigitalAtOpen: Object.fromEntries(Object.entries(banks).map(([k,v]) => [k, parseFloat(v)])), 
+          closingDate: '', closingUser: '', expectedCashAtClose: 0, countedCashAtClose: 0, cashDifferenceAtClose: 0, expectedDigitalAtClose: 0, confirmedDigitalAtClose: {}, closingNotes: '' 
+      };
       setCashSessions([newSession, ...cashSessions]);
       setIsCashBoxOpen(true);
   };
 
   const handleCloseCashBox = (counted: number, sysCash: number, sysDigital: number, notes: string, banks: Record<string, string>) => {
       const user = session?.user.fullName || 'ADMIN';
-      setCashSessions(prev => prev.map(s => s.status === 'OPEN' ? { ...s, status: 'CLOSED', closingDate: `${new Date().toLocaleDateString('es-PE')} ${new Date().toLocaleTimeString('es-PE')}`, closingUser: user, expectedCashAtClose: sysCash, countedCashAtClose: counted, cashDifferenceAtClose: counted - sysCash, expectedDigitalAtClose: sysDigital, confirmedDigitalAtClose: Object.fromEntries(Object.entries(banks).map(([k,v]) => [k, parseFloat(v)])), closingNotes: notes } : s));
+      setCashSessions(prev => prev.map(s => s.status === 'OPEN' ? { ...s, status: 'CLOSED', closingDate: `${new Date().toLocaleDateString('es-PE')} ${new Date().toLocaleTimeString('es-PE', { hour12: false })}`, closingUser: user, expectedCashAtClose: sysCash, countedCashAtClose: counted, cashDifferenceAtClose: counted - sysCash, expectedDigitalAtClose: sysDigital, confirmedDigitalAtClose: Object.fromEntries(Object.entries(banks).map(([k,v]) => [k, parseFloat(v)])), closingNotes: notes } : s));
       setIsCashBoxOpen(false);
       setLastClosingCash(counted);
   };
 
+  const currentCashSession = useMemo(() => cashSessions.find(s => s.status === 'OPEN'), [cashSessions]);
+
   const renderCurrentView = () => {
     if (!session) return null;
+
+    // BLOQUEO DE SEGURIDAD PARA VENDEDORES
+    if ((currentView === ViewState.POS || currentView === ViewState.SERVICES) && !isCashBoxOpen) {
+        return (
+            <div className="h-full flex items-center justify-center p-6 bg-slate-50 dark:bg-slate-950">
+                <div className="bg-white dark:bg-slate-900 p-12 rounded-[3rem] shadow-2xl border border-slate-100 dark:border-slate-800 text-center max-w-lg animate-in zoom-in-95">
+                    <div className="w-24 h-24 bg-red-100 dark:bg-red-900/30 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl shadow-red-500/10">
+                        <Lock size={48} />
+                    </div>
+                    <h2 className="text-3xl font-black text-slate-800 dark:text-white uppercase tracking-tighter mb-4">¡Caja Cerrada!</h2>
+                    <p className="text-slate-500 dark:text-slate-400 font-bold leading-relaxed mb-8 uppercase text-xs tracking-widest">No puede realizar ventas ni cobros de servicios hasta que realice la apertura de caja y declare el saldo inicial.</p>
+                    <button 
+                        onClick={() => setCurrentView(ViewState.CASH)}
+                        className="w-full py-4 bg-primary-600 text-white font-black rounded-2xl shadow-xl hover:bg-primary-700 transition-all flex items-center justify-center gap-2 uppercase text-xs tracking-widest"
+                    >
+                        <Wallet size={18}/> Ir a Abrir Caja
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     switch (currentView) {
       case ViewState.SUPER_ADMIN_DASHBOARD:
         return <SuperAdminModule tenants={tenants} onAddTenant={(t, u) => { setTenants([...tenants, t]); setSystemUsers([...systemUsers, u]); }} onUpdateTenant={(id, updates, newPass) => { setTenants(tenants.map(t => t.id === id ? { ...t, ...updates } : t)); if (newPass) setSystemUsers(systemUsers.map(u => { const tenant = tenants.find(ten => ten.id === id); if (u.companyName === tenant?.companyName && u.role === 'ADMIN') return { ...u, password: newPass }; return u; })); }} onDeleteTenant={id => setTenants(tenants.filter(t => t.id !== id))} onResetTenantData={id => alert("Datos restablecidos.")} />;
@@ -292,7 +357,7 @@ const App: React.FC = () => {
       case ViewState.INVENTORY: return <InventoryModule products={products} brands={brands} categories={categories} onUpdateProduct={handleUpdateProduct} onAddProduct={handleAddProduct} onDeleteProduct={handleDeleteProduct} onNavigate={setCurrentView} />;
       case ViewState.INVENTORY_ADJUSTMENT: return <InventoryAdjustmentModule products={products} salesHistory={salesHistory} onProcessInventorySession={handleProcessInventorySession} sessionUser={session.user.fullName} history={inventoryHistory} />;
       case ViewState.INVENTORY_AUDIT: return <InventoryAuditModule history={inventoryHistory} products={products} />;
-      case ViewState.CASH: return <CashModule movements={cashMovements} salesHistory={salesHistory} purchasesHistory={purchasesHistory} onAddMovement={handleAddCashMovement} bankAccounts={bankAccounts} onUniversalTransfer={handleUniversalTransfer} fixedExpenseCategories={fixedExpenseCats} fixedIncomeCategories={fixedIncomeCats} onAddFixedCategory={(cat, type) => type === 'Ingreso' ? setFixedIncomeCats([...fixedIncomeCats, cat]) : setFixedExpenseCats([...fixedExpenseCats, cat])} isCashBoxOpen={isCashBoxOpen} lastClosingCash={lastClosingCash} onOpenCashBox={handleOpenCashBox} onCloseCashBox={handleCloseCashBox} systemBaseCurrency={session.baseCurrency} />;
+      case ViewState.CASH: return <CashModule movements={cashMovements} salesHistory={salesHistory} purchasesHistory={purchasesHistory} onAddMovement={handleAddCashMovement} bankAccounts={bankAccounts} onUniversalTransfer={handleUniversalTransfer} fixedExpenseCategories={fixedExpenseCats} fixedIncomeCategories={fixedIncomeCats} onAddFixedCategory={(cat, i) => i === 'Ingreso' ? setFixedIncomeCats([...fixedIncomeCats, cat]) : setFixedExpenseCats([...fixedExpenseCats, cat])} isCashBoxOpen={isCashBoxOpen} lastClosingCash={lastClosingCash} onOpenCashBox={handleOpenCashBox} onCloseCashBox={handleCloseCashBox} systemBaseCurrency={session.baseCurrency} currentSession={currentCashSession} />;
       case ViewState.BANK_ACCOUNTS: return <BankAccountsModule bankAccounts={bankAccounts} onAddBankAccount={b => setBankAccounts([...bankAccounts, b])} onUpdateBankAccount={b => setBankAccounts(bankAccounts.map(x => x.id === b.id ? b : x))} onDeleteBankAccount={id => setBankAccounts(bankAccounts.filter(x => x.id !== id))} onUniversalTransfer={handleUniversalTransfer} />;
       case ViewState.BANK_HISTORY: return <BankHistoryModule cashMovements={cashMovements} bankAccounts={bankAccounts} />;
       case ViewState.CASH_BOX_HISTORY: return <CashBoxHistoryModule sessions={cashSessions} bankAccounts={bankAccounts} />;

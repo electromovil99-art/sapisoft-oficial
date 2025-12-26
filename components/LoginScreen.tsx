@@ -331,7 +331,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onResetPasswo
                 </div>
             </footer>
 
-            {/* LOGIN MODAL (ORIGINAL PRESERVED) */}
+            {/* LOGIN MODAL */}
             {showLoginModal && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setShowLoginModal(false)}></div>
@@ -346,15 +346,17 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onResetPasswo
                             {!isRecovery ? (
                                 <form onSubmit={handleSubmit} className="space-y-6">
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Usuario / Email</label>
+                                        <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Usuario / Email</label>
                                         <div className="relative group"><User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-primary transition-colors" /><input type="text" className="block w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-950 border-2 border-slate-100 dark:border-slate-800 rounded-2xl text-slate-900 dark:text-white font-bold focus:border-primary outline-none transition-all" placeholder="ADMIN" value={username} onChange={(e) => setUsername(e.target.value)} /></div>
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Contraseña</label>
+                                        <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Contraseña</label>
                                         <div className="relative group"><Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-primary transition-colors" /><input type="password" className="block w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-950 border-2 border-slate-100 dark:border-slate-800 rounded-2xl text-slate-900 dark:text-white font-bold focus:border-primary outline-none transition-all" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
                                     </div>
                                     {error && (<div className="p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-600 text-xs font-black uppercase tracking-tight"><AlertOctagon size={20} /> {error}</div>)}
-                                    <button type="submit" disabled={loading} className="w-full py-5 bg-slate-900 dark:bg-primary text-white font-black rounded-2xl shadow-2xl transition-all flex items-center justify-center gap-3 disabled:opacity-50 uppercase tracking-widest text-xs active:scale-95">{loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <>Ingresar ahora <ArrowRight size={20} /></>}</button>
+                                    <button type="submit" disabled={loading} className="w-full py-5 bg-primary text-white font-black rounded-2xl shadow-2xl transition-all flex items-center justify-center gap-3 disabled:opacity-50 uppercase tracking-widest text-xs active:scale-95 hover:bg-primary-600 hover:shadow-primary/30">
+                                        {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <>Ingresar ahora <ArrowRight size={20} /></>}
+                                    </button>
                                 </form>
                             ) : (
                                 <div className="text-center space-y-6 animate-in fade-in">
