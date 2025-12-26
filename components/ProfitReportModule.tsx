@@ -1,8 +1,7 @@
-
 import React, { useMemo, useState } from 'react';
 import { SaleRecord, CashMovement, Product } from '../types';
-import { PieChart, DollarSign, TrendingDown, TrendingUp, BarChart, Award, Lightbulb, Brain, ArrowRight, RefreshCw, Info, Target, Wallet, Percent } from 'lucide-react';
-import { GoogleGenAI } from "@google/genai";
+import { PieChart, DollarSign, TrendingDown, TrendingUp, BarChart, Award, Lightbulb, Brain, RefreshCw, Info, Target } from 'lucide-react';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const DailyProfitChart: React.FC<{ data: { day: string; profit: number }[] }> = ({ data }) => {
     const maxProfit = Math.max(...data.map(d => d.profit), 1);
@@ -103,7 +102,10 @@ const ProfitReportModule: React.FC<{ salesHistory: SaleRecord[], cashMovements: 
     const runAiAnalysis = async () => {
         setIsAnalyzing(true);
         try {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            // Cambio importante para Vercel/Vite
+            const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY || "");
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
             const prompt = `Analiza estos datos financieros de mi negocio:
             - Ventas Totales: S/ ${profitData.totalSales}
             - Costo de Mercadería (CMV): S/ ${profitData.cmv}
@@ -113,13 +115,12 @@ const ProfitReportModule: React.FC<{ salesHistory: SaleRecord[], cashMovements: 
             
             Dame 3 consejos estratégicos muy breves y directos para aumentar la utilidad el próximo mes. Sé profesional y usa terminología contable básica.`;
 
-            const response = await ai.models.generateContent({
-                model: 'gemini-3-flash-preview',
-                contents: prompt,
-            });
-            setAiInsight(response.text);
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            setAiInsight(response.text());
         } catch (error) {
-            setAiInsight("No se pudo conectar con el motor de IA. Verifique su conexión.");
+            console.error("Error IA:", error);
+            setAiInsight("No se pudo conectar con el motor de IA. Verifique que VITE_GEMINI_API_KEY esté configurada en Vercel.");
         } finally {
             setIsAnalyzing(false);
         }
@@ -189,7 +190,6 @@ const ProfitReportModule: React.FC<{ salesHistory: SaleRecord[], cashMovements: 
 
                 {/* Inteligencia y Top */}
                 <div className="flex flex-col gap-5">
-                    {/* Bloque IA (Dinámico) */}
                     <div className={`bg-gradient-to-br from-indigo-900 to-slate-900 rounded-[2.5rem] p-6 text-white shadow-xl transition-all duration-500 border border-white/10 ${aiInsight ? 'h-auto' : 'h-32 flex items-center justify-center'}`}>
                         {aiInsight ? (
                             <div className="animate-in fade-in slide-in-from-top-2">
@@ -204,7 +204,6 @@ const ProfitReportModule: React.FC<{ salesHistory: SaleRecord[], cashMovements: 
                         )}
                     </div>
 
-                    {/* Top Productos Rentables */}
                     <div className="flex-1 bg-white dark:bg-slate-800 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-slate-700 p-6 flex flex-col">
                         <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><Award size={16} className="text-amber-500"/> Top Artículos por Ganancia</h4>
                         <div className="flex-1 space-y-3">
@@ -224,7 +223,6 @@ const ProfitReportModule: React.FC<{ salesHistory: SaleRecord[], cashMovements: 
                 </div>
             </div>
 
-            {/* Footer Informativo */}
             <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center gap-4 shrink-0">
                 <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm text-slate-400"><Info size={16}/></div>
                 <p className="text-[9px] font-bold text-slate-400 uppercase leading-relaxed tracking-tighter max-w-2xl">
