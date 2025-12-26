@@ -1,8 +1,7 @@
-
 import React, { useState, useMemo } from 'react';
 import { ShieldCheck, History, Brain, TrendingDown, TrendingUp, AlertTriangle, Search, Eye, X, ArrowRight, DollarSign, Calculator, Lock, Info, RotateCcw } from 'lucide-react';
 import { InventoryHistorySession, Product } from '../types';
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 interface InventoryAuditModuleProps {
     history: InventoryHistorySession[];
@@ -44,7 +43,9 @@ const InventoryAuditModule: React.FC<InventoryAuditModuleProps> = ({ history, pr
         setAiAnalysis(null);
 
         try {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            // Usamos VITE_GEMINI_API_KEY que es el estándar para Vite/Vercel
+            const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY || "");
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
             
             // Preparar data compacta para la IA
             const historySummary = history.slice(0, 5).map(s => ({
@@ -61,15 +62,13 @@ const InventoryAuditModule: React.FC<InventoryAuditModuleProps> = ({ history, pr
             3. Riesgo de manipulación de sistema por parte de usuarios.
             Sé crítico, usa lenguaje profesional pero directo. No alucines, si los datos son pocos, menciónalo pero da una hipótesis.`;
 
-            const response = await ai.models.generateContent({
-                model: 'gemini-3-flash-preview',
-                contents: prompt,
-            });
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            setAiAnalysis(response.text());
 
-            setAiAnalysis(response.text);
         } catch (error) {
             console.error("Error AI Audit:", error);
-            setAiAnalysis("Error al conectar con el cerebro de auditoría. Verifique su API Key.");
+            setAiAnalysis("Error al conectar con el cerebro de auditoría. Verifique que la API Key esté configurada como VITE_GEMINI_API_KEY en Vercel.");
         } finally {
             setIsAnalyzing(false);
         }
@@ -114,7 +113,6 @@ const InventoryAuditModule: React.FC<InventoryAuditModuleProps> = ({ history, pr
                 <div className="w-full lg:w-[60%] bg-white dark:bg-slate-800 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col">
                     <div className="p-6 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 flex justify-between items-center">
                         <h3 className="font-black text-xs uppercase tracking-widest text-slate-700 dark:text-white flex items-center gap-2"><History size={16}/> Historial Cronológico</h3>
-                        <div className="relative"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/><input type="text" className="pl-9 pr-3 py-1.5 bg-white border rounded-xl text-[10px] outline-none w-48" placeholder="Filtrar por usuario..."/></div>
                     </div>
                     <div className="flex-1 overflow-auto">
                         <table className="w-full text-left">
@@ -184,29 +182,19 @@ const InventoryAuditModule: React.FC<InventoryAuditModuleProps> = ({ history, pr
                                         "{aiAnalysis}"
                                     </p>
                                 </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="bg-emerald-50 dark:bg-emerald-950/30 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900">
-                                        <h5 className="text-[10px] font-black text-emerald-700 dark:text-emerald-400 uppercase mb-2 flex items-center gap-1"><TrendingUp size={12}/> Sugerencia de Mejora</h5>
-                                        <p className="text-[10px] text-emerald-800 dark:text-emerald-200 font-bold">Refuerce el doble control en productos tipo {products[0]?.category || 'Accesorios'}.</p>
-                                    </div>
-                                    <div className="bg-rose-50 dark:bg-rose-950/30 p-4 rounded-2xl border border-rose-100 dark:border-rose-900">
-                                        <h5 className="text-[10px] font-black text-rose-700 dark:text-rose-400 uppercase mb-2 flex items-center gap-1"><Lock size={12}/> Control Preventivo</h5>
-                                        <p className="text-[10px] text-rose-800 dark:text-rose-200 font-bold">Cambie la frecuencia de auditoría a 48 horas en zona de vitrinas.</p>
-                                    </div>
-                                </div>
                             </div>
                         )}
                     </div>
                 </div>
             </div>
 
-            {/* MODAL DETALLE SESIÓN (REUSADO Y MEJORADO) */}
+            {/* MODAL DETALLE SESIÓN */}
             {selectedSession && (
                 <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[1000] flex items-center justify-center p-4">
                     <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden border border-white/20 animate-in slide-in-from-bottom-4">
                         <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
                             <button onClick={() => setSelectedSession(null)} className="flex items-center gap-2 text-slate-400 hover:text-slate-800 font-bold uppercase text-[10px] tracking-widest transition-colors">
-                                <X size={16} className="rotate-180"/> Cerrar
+                                <X size={16}/> Cerrar
                             </button>
                             <h3 className="font-black text-sm text-slate-800 dark:text-white uppercase tracking-tighter">Detalle de Auditoría #{selectedSession.id}</h3>
                             <div className="p-2 bg-primary-100 dark:bg-primary-900/30 text-primary-600 rounded-lg"><Info size={18}/></div>
