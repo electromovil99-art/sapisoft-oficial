@@ -1,8 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { ShieldCheck, History, Brain, TrendingDown, TrendingUp, Eye, X, Info, RotateCcw } from 'lucide-react';
 import { InventoryHistorySession, Product } from '../types';
-// IMPORTANTE: El nombre debe ser GoogleGenerativeAI
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import ReactMarkdown from 'react-markdown';
 
 interface InventoryAuditModuleProps {
@@ -15,7 +14,6 @@ const InventoryAuditModule: React.FC<InventoryAuditModuleProps> = ({ history, pr
     const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-    // --- KPIs de Auditoría ---
     const stats = useMemo(() => {
         let totalLoss = 0;
         let totalExtra = 0;
@@ -38,18 +36,13 @@ const InventoryAuditModule: React.FC<InventoryAuditModuleProps> = ({ history, pr
         return { totalLoss, totalExtra, totalItemsChecked, netImpact: totalExtra - totalLoss };
     }, [history, products]);
 
-    // --- Lógica de IA Gemini (Versión oficial estable) ---
     const runAiAudit = async () => {
         if (history.length === 0) return;
         setIsAnalyzing(true);
         setAiAnalysis(null);
 
         try {
-            // Reemplaza 'TU_API_KEY' por process.env.NEXT_PUBLIC_GEMINI_API_KEY o similar
-            const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || "");
-            
-            // Usamos gemini-1.5-flash por su velocidad y eficiencia en análisis de datos
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
             const historySummary = history.slice(0, 5).map(s => ({
                 fecha: s.date,
@@ -59,16 +52,16 @@ const InventoryAuditModule: React.FC<InventoryAuditModuleProps> = ({ history, pr
 
             const prompt = `Actúa como un auditor senior de retail. Analiza estos datos de inventario: ${JSON.stringify(historySummary)}. Detecta patrones de robo hormiga, errores de recepción o riesgos de usuario. Sé directo y usa Markdown.`;
 
-            // Ejecución de la llamada
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
-            const text = response.text();
+            const response = await ai.models.generateContent({
+                model: "gemini-3-flash-preview",
+                contents: prompt,
+            });
 
-            setAiAnalysis(text);
+            setAiAnalysis(response.text || "No se pudo generar un análisis.");
 
         } catch (error) {
             console.error("Error AI Audit:", error);
-            setAiAnalysis("## Error detectado\nNo se pudo procesar la auditoría. Verifica que la API KEY sea correcta y que la librería @google/generative-ai esté instalada.");
+            setAiAnalysis("## Error detectado\nNo se pudo procesar la auditoría. Verifica que la API KEY sea correcta.");
         } finally {
             setIsAnalyzing(false);
         }
@@ -76,8 +69,6 @@ const InventoryAuditModule: React.FC<InventoryAuditModuleProps> = ({ history, pr
 
     return (
         <div className="flex flex-col h-full gap-4 animate-in fade-in duration-500 max-w-[1600px] mx-auto w-full">
-            
-            {/* Header de Impacto Económico */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 shrink-0">
                 <div className="bg-white dark:bg-slate-800 p-5 rounded-[2rem] shadow-sm border border-slate-200 dark:border-slate-700 border-l-4 border-l-rose-500">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1"><TrendingDown size={12} className="text-rose-500"/> Faltantes</p>
@@ -106,7 +97,6 @@ const InventoryAuditModule: React.FC<InventoryAuditModuleProps> = ({ history, pr
                 </div>
             </div>
 
-            {/* Listado y Reporte */}
             <div className="flex-1 flex flex-col lg:flex-row gap-4 min-h-0">
                 <div className="w-full lg:w-[60%] bg-white dark:bg-slate-800 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col">
                     <div className="p-6 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 flex justify-between items-center">
@@ -155,8 +145,8 @@ const InventoryAuditModule: React.FC<InventoryAuditModuleProps> = ({ history, pr
                                 <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest leading-relaxed">Inicie el análisis para detectar patrones.</p>
                             </div>
                         ) : (
-                            <div className="prose prose-slate dark:prose-invert max-w-none">
-                                <ReactMarkdown className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
+                            <div className="prose prose-slate dark:prose-invert max-w-none text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
+                                <ReactMarkdown>
                                     {aiAnalysis}
                                 </ReactMarkdown>
                             </div>
@@ -165,7 +155,6 @@ const InventoryAuditModule: React.FC<InventoryAuditModuleProps> = ({ history, pr
                 </div>
             </div>
 
-            {/* Modal Detalle Sesión */}
             {selectedSession && (
                 <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[1000] flex items-center justify-center p-4">
                     <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom-4">

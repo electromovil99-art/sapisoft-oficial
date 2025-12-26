@@ -1,8 +1,9 @@
+
 import React, { useMemo, useState } from 'react';
 import { SaleRecord, CashMovement, Product } from '../types';
 import { PieChart, BarChart, Award, Lightbulb, Brain, RefreshCw, Info, Target } from 'lucide-react';
-// CORRECCIÓN: Nombre de importación correcto para la SDK actual
-import { GoogleGenerativeAI } from "@google/generative-ai";
+// FIX: Use correctly named SDK import from @google/genai
+import { GoogleGenAI } from "@google/genai";
 
 const DailyProfitChart: React.FC<{ data: { day: string; profit: number }[] }> = ({ data }) => {
     const maxProfit = Math.max(...data.map(d => d.profit), 1);
@@ -101,14 +102,13 @@ const ProfitReportModule: React.FC<{ salesHistory: SaleRecord[], cashMovements: 
         return { totalSales, cmv, operatingExpenses, netProfit, profitMargin, topProfitableProducts, profitChartData, monthlyProfitProjection };
     }, [salesHistory, cashMovements, products]);
 
-    // --- LÓGICA DE IA CORREGIDA ---
+    // --- LÓGICA DE IA GEMINI CORREGIDA ---
     const runAiAnalysis = async () => {
         setIsAnalyzing(true);
         setAiInsight(null);
         try {
-            // Inicialización con la clase correcta
-            const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || "");
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            // FIX: Initialize GoogleGenAI with named parameter using process.env.API_KEY
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
             const prompt = `Analiza estos datos financieros de mi negocio:
             - Ventas Totales: S/ ${profitData.totalSales.toFixed(2)}
@@ -119,14 +119,17 @@ const ProfitReportModule: React.FC<{ salesHistory: SaleRecord[], cashMovements: 
             
             Dame 3 consejos estratégicos muy breves y directos para aumentar la utilidad. Sé profesional.`;
 
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
-            const text = response.text();
+            // FIX: Use ai.models.generateContent instead of deprecated getGenerativeModel
+            const response = await ai.models.generateContent({
+                model: "gemini-3-flash-preview",
+                contents: prompt,
+            });
             
-            setAiInsight(text || "No se pudo generar un análisis.");
+            // FIX: Extract text directly from property
+            setAiInsight(response.text || "No se pudo generar un análisis.");
         } catch (error) {
             console.error("Error IA:", error);
-            setAiInsight("Error al conectar con la IA. Verifique su API_KEY y la instalación de @google/generative-ai.");
+            setAiInsight("Error al conectar con la IA. Verifique su API_KEY y la instalación de @google/genai.");
         } finally {
             setIsAnalyzing(false);
         }
