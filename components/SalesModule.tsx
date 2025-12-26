@@ -14,7 +14,7 @@ interface SalesModuleProps {
     clients: Client[];
     categories: Category[]; 
     purchasesHistory: PurchaseRecord[];
-    stockMovements: StockMovement[]; // AGREGADO
+    stockMovements: StockMovement[];
     bankAccounts: BankAccount[]; 
     locations: GeoLocation[];
     onAddClient: (client: Client) => void;
@@ -110,8 +110,6 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
 
   const costAnalysis = useMemo(() => {
       if (!showCostModal) return null;
-
-      // RECONSTRUCCIÓN CRONOLÓGICA REAL (Kardex Valorizado)
       const relevantMoves = [...stockMovements]
           .filter(m => m.productId === showCostModal.id)
           .sort((a, b) => {
@@ -132,26 +130,13 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
               runningValue += (m.quantity * mCost);
               runningStock += m.quantity;
               runningWac = runningStock > 0 ? runningValue / runningStock : mCost;
-
-              historyLog.push({
-                  date: m.date,
-                  supplier: m.reference.toUpperCase(),
-                  qty: m.quantity,
-                  cost: mCost,
-                  currentWac: runningWac
-              });
+              historyLog.push({ date: m.date, supplier: m.reference.toUpperCase(), qty: m.quantity, cost: mCost, currentWac: runningWac });
           } else {
-              // SALIDA (Ventas/Ajustes)
-              // Las salidas reducen stock y valor proporcionalmente, manteniendo el mismo WAC
               runningStock -= m.quantity;
               runningValue = runningStock * runningWac;
           }
       });
-
-      return { 
-          history: historyLog.reverse().slice(0, 10), 
-          avgCost: runningWac 
-      };
+      return { history: historyLog.reverse().slice(0, 10), avgCost: runningWac };
   }, [showCostModal, stockMovements]);
 
   const [newClientData, setNewClientData] = useState({ name: '', dni: '', phone: '', address: '', email: '', department: 'CUSCO', province: 'CUSCO', district: '' });
@@ -370,14 +355,233 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                                 </tbody>
                             </table>
                         </div>
-                        <p className="text-[9px] text-slate-400 mt-3 uppercase font-bold flex items-center gap-1.5"><Info size={12}/> El cálculo WAC considera el valor de la mercancía que queda en stock tras cada compra.</p>
                     </div>
                     <button onClick={() => setShowCostModal(null)} className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black rounded-2xl shadow-xl transition-all active:scale-95 uppercase tracking-widest">CERRAR ANÁLISIS</button>
                 </div>
             </div>
         </div>
       )}
-      {/* ... (Resto de modales: Payment, Recover, Client, Auth) ... */}
+
+      {showPaymentModal && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[999] flex items-center justify-center p-4">
+           <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-[750px] overflow-hidden flex flex-col border border-white/20 animate-in zoom-in-95 duration-300">
+              <div className="px-6 py-4 flex justify-between items-center border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
+                  <h3 className="text-sm font-black text-slate-800 dark:text-white flex items-center gap-2 uppercase tracking-tighter"><Banknote size={18} className="text-primary-600"/> Confirmar Pago <span className="mx-1 text-slate-300">|</span> <span className="text-slate-400 font-bold text-[10px] uppercase">COBRO AL CONTADO ({formatSymbol(currency)})</span></h3>
+                  <button onClick={() => setShowPaymentModal(false)} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors"><X size={18}/></button>
+              </div>
+              <div className="flex flex-1 min-h-[360px]">
+                  <div className="w-[45%] p-6 flex flex-col border-r border-slate-100 dark:border-slate-700 bg-slate-50/30 dark:bg-slate-900/30">
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><ListChecks size={14}/> DESGLOSE DE PAGOS</h4>
+                      <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl mb-6 bg-white dark:bg-slate-800/50 overflow-hidden">
+                          {paymentList.length === 0 ? (
+                              <div className="text-center p-8 opacity-40"><Tablet size={48} className="mx-auto mb-3 text-slate-300"/><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">No hay cobros registrados</p></div>
+                          ) : (
+                              <div className="w-full h-full overflow-y-auto p-3 space-y-2">
+                                  {paymentList.map(p => (
+                                      <div key={p.id} className="flex justify-between items-center p-3 bg-white dark:bg-slate-700 rounded-xl shadow-sm border border-slate-100 dark:border-slate-600">
+                                          <div><p className="text-[10px] font-black uppercase text-slate-700 dark:text-white">{p.method}</p>{p.bankName && <p className="text-[8px] text-slate-400 truncate uppercase mt-1">{p.bankName}</p>}{p.reference && <p className="text-[8px] text-slate-400 font-mono mt-0.5">REF: {p.reference}</p>}</div>
+                                          <div className="flex items-center gap-3"><span className="font-black text-xs">{formatSymbol(currency)} {p.amount.toFixed(2)}</span><button onClick={() => setPaymentList(paymentList.filter(x => x.id !== p.id))} className="text-red-300 hover:text-red-500"><Trash2 size={14}/></button></div>
+                                      </div>
+                                  ))}
+                              </div>
+                          )}
+                      </div>
+                      <div className="space-y-2 pt-3">
+                          <div className="flex justify-between text-xs font-bold text-slate-500"><span>Total Venta:</span><span className="text-slate-800 dark:text-white">{formatSymbol(currency)} {total.toFixed(2)}</span></div>
+                          <div className="flex justify-between items-baseline pt-2 border-t border-slate-200"><span className="font-black text-red-600 text-[10px] uppercase">Falta por Cobrar:</span><span className="text-2xl font-black text-red-600 tracking-tighter">{formatSymbol(currency)} {remainingTotal.toFixed(2)}</span></div>
+                      </div>
+                  </div>
+                  <div className="flex-1 p-6 flex flex-col gap-5">
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><Plus size={14}/> AGREGAR MEDIO</h4>
+                      <div className="space-y-4">
+                          <div className="grid grid-cols-2 gap-2">
+                              {['Efectivo', 'Yape', 'Transferencia', 'Tarjeta', 'Deposito', 'Saldo Favor'].map(m => (
+                                <button key={m} onClick={() => setCurrentPayment({...currentPayment, method: m as any, reference: '', accountId: ''})} className={`py-2 px-3 rounded-xl border-2 font-bold text-[10px] uppercase transition-all ${currentPayment.method === m ? 'bg-primary-600 border-primary-600 text-white shadow-lg' : 'bg-white dark:bg-slate-700 text-slate-400 border-slate-100 hover:border-slate-200'}`}>{m === 'Saldo Favor' ? 'Billetera' : m}</button>
+                              ))}
+                          </div>
+                          
+                          {currentPayment.method !== 'Efectivo' && currentPayment.method !== 'Saldo Favor' && (
+                              <div className="space-y-3 animate-in slide-in-from-top-1 duration-200 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
+                                  <div>
+                                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Cuenta Destino ({formatSymbol(currency)})</label>
+                                      <select className="w-full p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold outline-none" value={currentPayment.accountId} onChange={e => setCurrentPayment({...currentPayment, accountId: e.target.value})}>
+                                          <option value="">-- SELECCIONAR CUENTA --</option>
+                                          {availableBankAccounts.map(b => <option key={b.id} value={b.id}>{b.alias || b.bankName} - {b.accountNumber}</option>)}
+                                      </select>
+                                  </div>
+                                  <div>
+                                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Nro. de Operación / Ref</label>
+                                      <input type="text" className="w-full p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold outline-none" value={currentPayment.reference} onChange={e => setCurrentPayment({...currentPayment, reference: e.target.value})} placeholder="Ej. 123456" />
+                                  </div>
+                              </div>
+                          )}
+
+                          <div className="space-y-1 pt-1">
+                              <div className="flex justify-between items-center mb-1"><label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">MONTO A COBRAR</label><span className="text-[9px] font-black text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full uppercase tracking-tighter">RESTANTE: {remainingTotal.toFixed(2)}</span></div>
+                              <div className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-black text-slate-300 italic">{formatSymbol(currency)}</span><input ref={paymentAmountRef} type="number" className="w-full pl-12 p-4 bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-700 rounded-2xl text-4xl font-black text-slate-800 dark:text-white outline-none focus:border-primary-500 shadow-inner" value={currentPayment.amount} onChange={e => setCurrentPayment({...currentPayment, amount: e.target.value})} /></div>
+                          </div>
+                          <button onClick={handleAddPayment} className="w-full py-3.5 bg-slate-800 dark:bg-white text-white dark:text-slate-900 font-black rounded-2xl flex items-center justify-center gap-2 shadow-xl hover:opacity-90 transition-all uppercase text-[11px] tracking-widest"><Plus size={18}/> Agregar Cobro</button>
+                      </div>
+                  </div>
+              </div>
+              <div className="p-5 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-700 flex justify-end gap-3">
+                  <button onClick={() => setShowPaymentModal(false)} className="px-6 py-3.5 text-slate-500 font-black hover:bg-slate-200 dark:hover:bg-slate-800 rounded-2xl transition-all uppercase tracking-widest text-[10px]">Cancelar</button>
+                  <button onClick={handleFinalizeSale} disabled={remainingTotal > 0.05} className="px-10 py-3.5 bg-primary-600 text-white font-black rounded-2xl shadow-xl hover:bg-primary-700 transition-all uppercase tracking-widest text-[10px] flex items-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed"><CheckCircle size={18}/> Procesar Venta</button>
+              </div>
+           </div>
+        </div>
+      )}
+
+      {showTicket && ticketData && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[1000] flex items-center justify-center p-4">
+            <div className={`bg-zinc-100 p-4 shadow-2xl rounded-2xl animate-in fade-in zoom-in-95 overflow-hidden flex flex-col gap-4 ${printFormat === 'A4' ? 'max-w-4xl w-full h-[90vh]' : 'max-w-sm w-full h-auto'}`}>
+                <div className="no-print bg-white p-2 rounded-xl border flex gap-2 shadow-sm shrink-0">
+                    <button onClick={() => setPrintFormat('80mm')} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${printFormat === '80mm' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}><Layout size={14}/> Ticket 80mm</button>
+                    <button onClick={() => setPrintFormat('A4')} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${printFormat === 'A4' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}><FileIcon size={14}/> Documento A4</button>
+                </div>
+                <div id="print-area" className="flex-1 overflow-auto p-4 bg-zinc-200 no-scrollbar rounded-xl flex justify-center items-start">
+                    {printFormat === '80mm' ? (
+                        <div className="bg-white w-[300px] p-6 shadow-sm font-mono text-[10px] text-black mx-auto shrink-0 tabular-nums">
+                            <div className="text-center mb-4 pb-2 border-b-2 border-dashed border-black"><h2 className="font-bold text-xs uppercase tracking-tighter">SapiSoft ERP</h2><p className="text-[8px] text-black font-bold uppercase">SISTEMA DE VENTAS</p></div>
+                            <div className="mb-3 space-y-0.5 text-black">
+                                <div className="flex justify-between"><span>Venta:</span> <span className="font-bold">#{ticketData.id}</span></div>
+                                <div className="flex justify-between"><span>Fecha:</span> <span className="font-bold">{ticketData.date}</span></div>
+                                <div className="flex justify-between"><span>Cliente:</span> <span className="font-bold truncate max-w-[150px]">{ticketData.client.name}</span></div>
+                                <div className="flex justify-between"><span>Doc:</span> <span className="uppercase font-bold">{ticketData.docType}</span></div>
+                                <div className="flex justify-between"><span>Pago:</span> <span className="font-black uppercase">{ticketData.condition}</span></div>
+                            </div>
+                            <div className="border-y border-dashed border-black py-2 mb-3">
+                                <div className="grid grid-cols-[1fr_22px_40px_45px] font-black text-[8px] mb-1 border-b border-black pb-1 uppercase text-black"><span>Articulo</span><span className="text-center">Cant</span><span className="text-right">Unit</span><span className="text-right">Total</span></div>
+                                {ticketData.items.map((item: CartItem, idx: number) => (
+                                    <div key={idx} className="grid grid-cols-[1fr_22px_40px_45px] mb-1 last:mb-0 leading-tight text-black">
+                                        <span className="uppercase truncate pr-1 font-bold">{item.name}</span>
+                                        <span className="text-center font-black">{item.quantity}</span>
+                                        <span className="text-right font-medium">{item.price.toFixed(0)}</span>
+                                        <span className="text-right font-black">{(item.price * item.quantity).toFixed(0)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="space-y-1 mb-4 border-b-2 border-black pb-2 text-black">
+                                <div className="flex justify-between text-xs font-black"><span>TOTAL {formatSymbol(ticketData.currency)}</span><span>{ticketData.total.toFixed(2)}</span></div>
+                            </div>
+                            {ticketData.payments && ticketData.payments.length > 0 && (
+                                <div className="bg-slate-50 p-2 rounded-lg space-y-1 mb-4 text-black border border-black">
+                                    <p className="text-[8px] font-black uppercase mb-1">COBROS:</p>
+                                    {ticketData.payments.map((p: any, i: number) => (
+                                        <div key={i} className="flex justify-between items-center text-[9px] font-bold"><span>{p.method.toUpperCase()}</span><span>{p.amount.toFixed(2)}</span></div>
+                                    ))}
+                                </div>
+                            )}
+                            <div className="mt-6 text-center italic text-[8px] text-black font-bold uppercase border-t border-black pt-2">¡Gracias por su compra!</div>
+                        </div>
+                    ) : (
+                        <div className="a4-preview-container bg-white p-12 shadow-sm font-sans text-xs text-slate-800 mx-auto min-h-[1100px] flex flex-col shrink-0">
+                            <div className="flex justify-between items-start mb-8 border-b-2 border-blue-600 pb-6">
+                                <div className="space-y-1"><h1 className="text-2xl font-black text-blue-600 uppercase tracking-tighter">SapiSoft ERP</h1><p className="font-bold text-slate-500 uppercase">SISTEMA INTEGRAL DE VENTAS</p></div>
+                                <div className="bg-slate-50 border-2 border-slate-200 p-4 rounded-xl text-center min-w-[200px]">
+                                    <p className="bg-blue-600 text-white py-1 px-2 font-black text-[10px] rounded mb-1 uppercase">{ticketData.docType}</p>
+                                    <p className="font-mono text-lg font-black">{ticketData.id}</p>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-8 mb-8">
+                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                    <p className="text-[9px] font-black text-blue-600 uppercase mb-2 border-b pb-1">Datos del Cliente</p>
+                                    <p className="font-black text-sm uppercase">{ticketData.client.name}</p>
+                                    <p><strong>Identificación:</strong> {ticketData.client.dni}</p>
+                                </div>
+                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                    <p className="text-[9px] font-black text-blue-600 uppercase mb-2 border-b pb-1">Información Venta</p>
+                                    <p><strong>Fecha:</strong> {ticketData.date}</p>
+                                    <p><strong>Condición:</strong> {ticketData.condition}</p>
+                                    <p><strong>Moneda:</strong> {formatSymbol(ticketData.currency)}</p>
+                                </div>
+                            </div>
+                            <table className="w-full border-collapse">
+                                <thead><tr className="bg-blue-600 text-white"><th className="p-2 text-left text-[8px] uppercase">SKU</th><th className="p-2 text-left text-[8px] uppercase">Descripción</th><th className="p-2 text-center text-[8px] uppercase">Cant.</th><th className="p-2 text-right text-[8px] uppercase">P. Unit</th><th className="p-2 text-right text-[8px] uppercase">Total</th></tr></thead>
+                                <tbody>
+                                    {ticketData.items.map((item: CartItem, i: number) => (
+                                        <tr key={i} className="border-b border-slate-100">
+                                            <td className="p-2 font-mono">{item.code}</td>
+                                            <td className="p-2 uppercase">{item.name}</td>
+                                            <td className="p-2 text-center font-black">{item.quantity}</td>
+                                            <td className="p-2 text-right">{item.price.toFixed(2)}</td>
+                                            <td className="p-2 text-right font-black">{(item.price * item.quantity).toFixed(2)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            <div className="flex justify-end pt-8">
+                                <div className="w-72 p-4 bg-blue-600 text-white rounded-xl text-right">
+                                    <span className="font-black uppercase block text-[10px] mb-1">Total Venta:</span>
+                                    <span className="text-2xl font-black font-mono">{formatSymbol(ticketData.currency)} {ticketData.total.toFixed(2)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+                <div className="no-print flex gap-2 shrink-0 bg-white p-4 rounded-xl border border-slate-200">
+                    <button onClick={() => setShowTicket(false)} className="flex-1 py-3 bg-white text-slate-500 font-black rounded-xl text-[10px] uppercase border">Finalizar</button>
+                    <button onClick={() => window.print()} className="flex-1 py-3 bg-blue-600 text-white font-black rounded-xl text-[10px] flex items-center justify-center gap-2 shadow-lg hover:bg-blue-700 transition-all uppercase tracking-widest"><Printer size={16}/> Imprimir</button>
+                </div>
+            </div>
+        </div>
+       )}
+
+      {showClientModal && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[1000] flex items-center justify-center p-4">
+           <div className="bg-white dark:bg-slate-800 rounded-[2rem] shadow-2xl w-full max-w-3xl border border-white/20 animate-in zoom-in-95 duration-300 overflow-hidden">
+               <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50"><h3 className="font-black text-base text-slate-800 dark:text-white flex items-center gap-3 uppercase tracking-tighter"><UserPlus className="text-primary-600" size={20}/> Nuevo Cliente</h3><button onClick={() => setShowClientModal(false)} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors"><X size={20}/></button></div>
+               <div className="p-8 space-y-6">
+                    <div className="space-y-1"><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Nombre Completo</label><input type="text" className="w-full p-3.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl font-bold uppercase outline-none focus:border-primary-500 shadow-sm text-sm" value={newClientData.name} onChange={e => setNewClientData({...newClientData, name: e.target.value})} placeholder="EJ. JUAN PÉREZ" autoFocus /></div>
+                    <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-1"><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">DNI / RUC</label><input type="text" className="w-full p-3.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl font-bold outline-none focus:border-primary-500 text-sm" value={newClientData.dni} onChange={e => setNewClientData({...newClientData, dni: e.target.value})} placeholder="00000000" /></div>
+                        <div className="space-y-1"><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Teléfono</label><input type="text" className="w-full p-3.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl font-bold outline-none focus:border-primary-500 text-sm" value={newClientData.phone} onChange={e => setNewClientData({...newClientData, phone: e.target.value})} placeholder="999 999 999" /></div>
+                    </div>
+                    <div className="flex justify-end gap-4 pt-4"><button onClick={() => setShowClientModal(false)} className="px-10 py-4 text-slate-500 font-bold hover:bg-slate-100 rounded-2xl transition-all uppercase tracking-widest text-xs">Cancelar</button><button onClick={() => { if (!newClientData.name || !newClientData.dni) return alert("Nombre y DNI obligatorios."); const cl: Client = { id: Date.now().toString(), name: newClientData.name.toUpperCase(), dni: newClientData.dni, phone: newClientData.phone, creditLine: 0, creditUsed: 0, totalPurchases: 0, paymentScore: 3, digitalBalance: 0 }; onAddClient(cl); setClient(cl); setShowClientModal(false); }} className="px-12 py-4 bg-primary-600 text-white font-black rounded-2xl hover:bg-primary-700 shadow-xl transition-all text-xs uppercase tracking-widest">Guardar Cliente</button></div>
+               </div>
+           </div>
+        </div>
+      )}
+
+      {showAuthModal && (
+        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[1200] flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-[350px] p-8 border border-white/20 animate-in zoom-in-95">
+                <div className="text-center space-y-4">
+                    <div className="w-16 h-16 bg-red-50 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto text-red-600"><Lock size={32}/></div>
+                    <div><h3 className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-tighter">Autorización</h3><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Se requiere clave de administrador para cambiar el precio</p></div>
+                    {!isAuthorized ? (
+                        <>
+                            <input type="password" autoFocus className="w-full p-4 bg-slate-50 dark:bg-slate-950 border-2 border-slate-100 dark:border-slate-800 rounded-2xl text-center text-4xl tracking-[0.3em] font-black outline-none focus:border-primary-500" value={authPassword} onChange={e => setAuthPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAuthorize()} placeholder="****" />
+                            <div className="flex gap-3"><button onClick={() => { setShowAuthModal(false); setAuthPassword(''); }} className="flex-1 py-3 text-slate-500 font-bold uppercase text-[10px]">Cancelar</button><button onClick={handleAuthorize} className="flex-1 py-3 bg-slate-900 text-white font-black rounded-xl uppercase text-[10px] tracking-widest shadow-lg">Validar</button></div>
+                        </>
+                    ) : (
+                        <>
+                            <div className="space-y-1"><label className="text-[10px] font-black text-slate-400 uppercase block">Nuevo Precio ({formatSymbol(currency)})</label><input type="number" autoFocus className="w-full p-4 bg-primary-50 dark:bg-primary-900/20 border-2 border-primary-500 rounded-2xl text-center text-3xl font-black outline-none" value={newPriceInput} onChange={e => setNewPriceInput(e.target.value)} /></div>
+                            <button onClick={handleApplyNewPrice} className="w-full py-4 bg-primary-600 text-white font-black rounded-2xl shadow-xl hover:bg-primary-700 transition-all uppercase text-[10px] tracking-widest">Aplicar Nuevo Precio</button>
+                        </>
+                    )}
+                </div>
+            </div>
+        </div>
+      )}
+
+      {showRecoverModal && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[1000] flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-slate-800 rounded-[2rem] shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden border border-white/20 animate-in zoom-in-95">
+                <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 flex justify-between items-center"><h3 className="font-black text-sm text-slate-800 dark:text-white uppercase tracking-tighter flex items-center gap-2"><History size={18} className="text-primary-500"/> Ventas Pendientes</h3><button onClick={() => setShowRecoverModal(false)} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors"><X size={18}/></button></div>
+                <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                    {quotations.length === 0 ? (
+                        <div className="py-20 text-center text-slate-300 italic flex flex-col items-center"><History size={48} strokeWidth={1} className="mb-3 opacity-20"/><p className="text-xs font-bold uppercase">No hay cotizaciones activas</p></div>
+                    ) : quotations.map(q => (
+                        <button key={q.id} onClick={() => { onLoadQuotation(q); setShowRecoverModal(false); }} className="w-full text-left p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-700 hover:border-primary-500 transition-all group flex items-center justify-between">
+                            <div><p className="font-black text-xs text-slate-800 dark:text-white uppercase">{q.clientName}</p><p className="text-[9px] text-slate-400 font-bold uppercase">{q.date} {q.time} - {q.items.length} productos</p></div>
+                            <div className="text-right shrink-0"><p className="font-black text-sm text-primary-600">S/ {q.total.toFixed(2)}</p><span className="text-[8px] font-black text-slate-300 uppercase">Click p/ Recuperar</span></div>
+                        </button>
+                    ))}
+                </div>
+            </div>
+        </div>
+      )}
     </div>
   );
 };
