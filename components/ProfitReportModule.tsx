@@ -1,9 +1,8 @@
-
 import React, { useMemo, useState } from 'react';
 import { SaleRecord, CashMovement, Product } from '../types';
-import { PieChart, DollarSign, TrendingDown, TrendingUp, BarChart, Award, Lightbulb, Brain, RefreshCw, Info, Target } from 'lucide-react';
-// Fixed: Import GoogleGenAI from @google/genai
-import { GoogleGenAI } from "@google/genai";
+import { PieChart, BarChart, Award, Lightbulb, Brain, RefreshCw, Info, Target } from 'lucide-react';
+// CORRECCIÓN: Nombre de importación correcto para la SDK actual
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const DailyProfitChart: React.FC<{ data: { day: string; profit: number }[] }> = ({ data }) => {
     const maxProfit = Math.max(...data.map(d => d.profit), 1);
@@ -86,7 +85,8 @@ const ProfitReportModule: React.FC<{ salesHistory: SaleRecord[], cashMovements: 
         });
 
         const profitChartData = Object.keys(dailyData).map(dateKey => {
-            const date = new Date(dateKey.split('/').reverse().join('-'));
+            const dateParts = dateKey.split('/');
+            const date = new Date(+dateParts[2], +dateParts[1] - 1, +dateParts[0]);
             const data = dailyData[dateKey];
             return {
                 day: date.toLocaleDateString('es-PE', { weekday: 'short' }).replace('.',''),
@@ -101,32 +101,32 @@ const ProfitReportModule: React.FC<{ salesHistory: SaleRecord[], cashMovements: 
         return { totalSales, cmv, operatingExpenses, netProfit, profitMargin, topProfitableProducts, profitChartData, monthlyProfitProjection };
     }, [salesHistory, cashMovements, products]);
 
+    // --- LÓGICA DE IA CORREGIDA ---
     const runAiAnalysis = async () => {
         setIsAnalyzing(true);
+        setAiInsight(null);
         try {
-            // Fixed: Initialize GoogleGenAI with process.env.API_KEY
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            // Inicialización con la clase correcta
+            const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || "");
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
             const prompt = `Analiza estos datos financieros de mi negocio:
-            - Ventas Totales: S/ ${profitData.totalSales}
-            - Costo de Mercadería (CMV): S/ ${profitData.cmv}
-            - Gastos Operativos: S/ ${profitData.operatingExpenses}
-            - Utilidad Neta: S/ ${profitData.netProfit}
+            - Ventas Totales: S/ ${profitData.totalSales.toFixed(2)}
+            - Costo de Mercadería (CMV): S/ ${profitData.cmv.toFixed(2)}
+            - Gastos Operativos: S/ ${profitData.operatingExpenses.toFixed(2)}
+            - Utilidad Neta: S/ ${profitData.netProfit.toFixed(2)}
             - Margen Neto: ${profitData.profitMargin.toFixed(2)}%
             
-            Dame 3 consejos estratégicos muy breves y directos para aumentar la utilidad el próximo mes. Sé profesional y usa terminología contable básica.`;
+            Dame 3 consejos estratégicos muy breves y directos para aumentar la utilidad. Sé profesional.`;
 
-            // Fixed: Call generateContent directly on ai.models and use recommended model
-            const response = await ai.models.generateContent({
-                model: "gemini-3-flash-preview",
-                contents: prompt,
-            });
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            const text = response.text();
             
-            // Fixed: Access .text property directly
-            setAiInsight(response.text || "No se pudo generar un análisis.");
+            setAiInsight(text || "No se pudo generar un análisis.");
         } catch (error) {
             console.error("Error IA:", error);
-            setAiInsight("No se pudo conectar con el motor de IA. Verifique que la API_KEY esté configurada.");
+            setAiInsight("Error al conectar con la IA. Verifique su API_KEY y la instalación de @google/generative-ai.");
         } finally {
             setIsAnalyzing(false);
         }
@@ -185,7 +185,7 @@ const ProfitReportModule: React.FC<{ salesHistory: SaleRecord[], cashMovements: 
                 {/* Gráfico Tendencia */}
                 <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-slate-700 p-8 flex flex-col">
                     <div className="flex justify-between items-center mb-6">
-                        <h3 className="font-black text-xs uppercase tracking-widest text-slate-700 dark:text-white flex items-center gap-2"><BarChart size={16} className="text-primary-500"/> Tendencia de Utilidad Diaria</h3>
+                        <h3 className="font-black text-xs uppercase tracking-widest text-slate-700 dark:text-white flex items-center gap-2">Tendencia de Utilidad Diaria</h3>
                         <div className="text-right">
                             <span className="text-[9px] font-black text-slate-400 uppercase">Proyección Mensual</span>
                             <p className="text-lg font-black text-emerald-600">S/ {profitData.monthlyProfitProjection.toFixed(2)}</p>
@@ -232,7 +232,7 @@ const ProfitReportModule: React.FC<{ salesHistory: SaleRecord[], cashMovements: 
             <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center gap-4 shrink-0">
                 <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm text-slate-400"><Info size={16}/></div>
                 <p className="text-[9px] font-bold text-slate-400 uppercase leading-relaxed tracking-tighter max-w-2xl">
-                    Este reporte calcula la utilidad neta restando el costo promedio de inventario (CMV) y los gastos registrados en caja. Los resultados son proyecciones basadas en movimientos históricos.
+                    Este reporte calcula la utilidad neta restando el costo promedio de inventario (CMV) y los gastos registrados en caja.
                 </p>
             </div>
         </div>
