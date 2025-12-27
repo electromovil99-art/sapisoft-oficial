@@ -182,10 +182,27 @@ const App: React.FC = () => {
       const date = new Date().toLocaleDateString('es-PE');
       const time = new Date().toLocaleTimeString('es-PE', { hour12: false });
       const user = session?.user.fullName || 'Admin';
-      const newSale: SaleRecord = { id: ticketId, date, time, clientName, docType, total, items: [...cart], paymentBreakdown: paymentBreakdown, user, currency: currency, exchangeRate };
+      const newSale: SaleRecord = { id: ticketId, date, time, clientName, docType, total, items: [...cart], paymentBreakdown, detailedPayments, user, currency, exchangeRate };
       setSalesHistory(prev => [newSale, ...prev]);
-      handleManualAdjustment(cart[0].id, 'SALIDA', cart[0].quantity, `VENTA ${docType} #${ticketId}`); // Simplified for brevity
-      detailedPayments.forEach(p => handleAddCashMovement({ id: Math.random().toString(), date, time, type: 'Ingreso', paymentMethod: p.method, concept: `VENTA ${docType} #${ticketId}`, user, category: 'VENTA', financialType: 'Variable', amount: p.amount, accountId: p.accountId, referenceId: p.reference || ticketId, currency: currency }));
+      
+      // Ajustar stock para cada producto del carrito
+      cart.forEach(item => handleManualAdjustment(item.id, 'SALIDA', item.quantity, `VENTA ${docType} #${ticketId}`));
+
+      detailedPayments.forEach(p => handleAddCashMovement({ 
+          id: Math.random().toString(), 
+          date, 
+          time, 
+          type: 'Ingreso', 
+          paymentMethod: p.method, 
+          concept: `VENTA ${docType} #${ticketId}`, 
+          user, 
+          category: 'VENTA', 
+          financialType: 'Variable', 
+          amount: p.amount, 
+          accountId: p.accountId, 
+          referenceId: p.method === 'Efectivo' ? undefined : (p.reference || ticketId), 
+          currency: currency 
+      }));
   }, [session, handleManualAdjustment, handleAddCashMovement]);
 
   const handleProcessPurchase = useCallback((cart: CartItem[], total: number, docType: string, supplierName: string, paymentCondition: 'Contado' | 'Credito', creditDays: number, detailedPayments: any[], currency: string, exchangeRate: number) => {
@@ -193,24 +210,46 @@ const App: React.FC = () => {
       const time = new Date().toLocaleTimeString('es-PE', { hour12: false });
       const user = session?.user.fullName || 'Admin';
       const purchaseId = 'PUR-' + Math.floor(Math.random() * 1000000).toString();
-      const newPurchase: PurchaseRecord = { id: purchaseId, date, time, supplierName, docType, total, items: [...cart], paymentCondition: paymentCondition, user, currency: currency, exchangeRate: exchangeRate || 1 };
+      const newPurchase: PurchaseRecord = { id: purchaseId, date, time, supplierName, docType, total, items: [...cart], paymentCondition, detailedPayments, user, currency, exchangeRate: exchangeRate || 1 };
       setPurchasesHistory(prev => [newPurchase, ...prev]);
+
+      // Ajustar stock (entrada) para cada producto
+      cart.forEach(item => handleManualAdjustment(item.id, 'ENTRADA', item.quantity, `COMPRA ${docType} #${purchaseId}`));
+
       if (paymentCondition === 'Contado' && detailedPayments) {
-          detailedPayments.forEach(pay => handleAddCashMovement({ id: Math.random().toString(), date, time, type: 'Egreso', paymentMethod: pay.method, concept: `COMPRA ${docType} #${purchaseId} - ${supplierName}`, user, category: 'COMPRA', financialType: 'Variable', amount: pay.amount, accountId: pay.accountId, referenceId: pay.reference || purchaseId, currency: currency }));
+          detailedPayments.forEach(pay => handleAddCashMovement({ 
+              id: Math.random().toString(), 
+              date, 
+              time, 
+              type: 'Egreso', 
+              paymentMethod: pay.method, 
+              concept: `COMPRA ${docType} #${purchaseId} - ${supplierName}`, 
+              user, 
+              category: 'COMPRA', 
+              financialType: 'Variable', 
+              amount: pay.amount, 
+              accountId: pay.accountId, 
+              referenceId: pay.method === 'Efectivo' ? undefined : (pay.reference || purchaseId), 
+              currency: currency 
+          }));
       }
-  }, [session, handleAddCashMovement]);
+  }, [session, handleManualAdjustment, handleAddCashMovement]);
 
   const handleProcessCreditNote = useCallback((originalSaleId: string, itemsToReturn: { itemId: string, quantity: number }[], totalRefund: number, breakdown: PaymentBreakdown, detailedRefunds?: any[]) => {
       const date = new Date().toLocaleDateString('es-PE');
       const time = new Date().toLocaleTimeString('es-PE', { hour12: false });
       const user = session?.user.fullName || 'Admin';
       const ncId = 'NC-' + Math.random().toString(36).substr(2, 6).toUpperCase();
+      
+      // Regresar stock
+      itemsToReturn.forEach(item => handleManualAdjustment(item.itemId, 'ENTRADA', item.quantity, `DEVOLUCIÓN NC #${ncId} - REF. VENTA #${originalSaleId}`));
+
       if (detailedRefunds) {
           detailedRefunds.forEach(ref => {
               handleAddCashMovement({ id: Math.random().toString(), date, time, type: 'Egreso', paymentMethod: ref.method, concept: `REEMBOLSO NC #${ncId} - DEV. VENTA #${originalSaleId}`, user, category: 'DEVOLUCION', financialType: 'Variable', amount: ref.amount, accountId: ref.accountId, referenceId: ref.reference });
           });
       }
-  }, [session, handleAddCashMovement]);
+  }, [session, handleManualAdjustment, handleAddCashMovement]);
 
   const handleAddService = useCallback((s: ServiceOrder) => {
       setServices(prev => [s, ...prev]);
@@ -271,7 +310,6 @@ const App: React.FC = () => {
           const account = bankAccounts.find(a => a.id === accId);
           if (!account) return;
 
-          // Calculamos saldo sistema para esta cuenta usando TODOS los movimientos
           const sysValue = cashMovements
               .filter(m => m.accountId === accId)
               .reduce((sum, m) => m.type === 'Ingreso' ? sum + m.amount : sum - m.amount, 0);
@@ -294,7 +332,6 @@ const App: React.FC = () => {
           }
       });
 
-      // Registramos los movimientos de ajuste primero
       if (newAdjMovements.length > 0) {
           setCashMovements(prev => [...newAdjMovements, ...prev]);
       }
@@ -327,7 +364,6 @@ const App: React.FC = () => {
   const renderCurrentView = () => {
     if (!session) return null;
 
-    // BLOQUEO DE SEGURIDAD PARA VENDEDORES
     if ((currentView === ViewState.POS || currentView === ViewState.SERVICES) && !isCashBoxOpen) {
         return (
             <div className="h-full flex items-center justify-center p-6 bg-slate-50 dark:bg-slate-950">

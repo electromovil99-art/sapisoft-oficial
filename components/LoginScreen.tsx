@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
     Lock, User, ArrowRight, ShieldCheck, Mail, CheckCircle, ArrowLeft, Key, BellRing, X, AlertOctagon, 
@@ -135,13 +134,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onResetPasswo
     const [loading, setLoading] = useState(false);
     
     const [isRecovery, setIsRecovery] = useState(false);
-    const [recoveryEmail, setRecoveryEmail] = useState('');
-    const [recoveryStep, setRecoveryStep] = useState<'INPUT' | 'CODE' | 'NEW_PASS' | 'SUCCESS'>('INPUT');
-    const [generatedCode, setGeneratedCode] = useState('');
-    const [inputCode, setInputCode] = useState('');
-    const [foundUser, setFoundUser] = useState<SystemUser | null>(null);
-    const [newPassword, setNewPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
 
     useEffect(() => {
         window.scrollTo(0, 0);
@@ -219,22 +211,23 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onResetPasswo
             );
             default: return (
                 <>
-                    <section className="relative overflow-hidden pt-16 pb-20 lg:pt-24 lg:pb-28">
-                        <div className="ambient-glow -top-20 -left-20 bg-[radial-gradient(circle,rgba(147,51,234,0.2)_0%,rgba(0,0,0,0)_70%)]"></div>
+                    <section className="relative overflow-hidden pt-12 pb-16 lg:pt-20 lg:pb-24">
+                        <div className="ambient-glow -top-20 -left-20 bg-[radial-gradient(circle,rgba(147,51,234,0.15)_0%,rgba(0,0,0,0)_70%)]"></div>
                         <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                             <div className="grid lg:grid-cols-2 gap-12 items-center">
                                 <div className="flex flex-col gap-6 text-center lg:text-left">
-                                    <h1 className="text-5xl font-black leading-[1.1] tracking-tight text-text-dark dark:text-white sm:text-6xl lg:text-7xl">Tu negocio, bajo <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-primary-400">control total.</span></h1>
-                                    <p className="mx-auto lg:mx-0 max-w-lg text-lg text-gray-600 dark:text-gray-300 font-medium">Controla ventas e inventario desde el celular. Recibe notificaciones en tiempo real y optimiza tu tiempo libre con SapiSoft Cloud.</p>
-                                    <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 pt-4">
-                                        <button onClick={() => setShowLoginModal(true)} className="flex min-w-[200px] items-center justify-center rounded-[1.5rem] bg-primary h-14 px-8 text-xs font-black uppercase tracking-widest text-white transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-primary/40">Empezar ahora</button>
+                                    <h1 className="text-4xl font-black leading-[1.1] tracking-tight text-text-dark dark:text-white sm:text-5xl lg:text-6xl">Tu negocio, bajo <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-primary-400">control total.</span></h1>
+                                    <p className="mx-auto lg:mx-0 max-w-lg text-base text-gray-600 dark:text-gray-300 font-medium leading-relaxed">Controla ventas e inventario desde cualquier lugar. Recibe notificaciones en tiempo real y optimiza tu rentabilidad con SapiSoft Cloud ERP.</p>
+                                    <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 pt-2">
+                                        <button onClick={() => setShowLoginModal(true)} className="flex min-w-[220px] items-center justify-center rounded-[1.2rem] bg-primary h-14 px-8 text-[11px] font-black uppercase tracking-widest text-white transition-all hover:scale-105 active:scale-95 shadow-xl shadow-primary/20">Empezar ahora</button>
+                                        <button onClick={() => setCurrentPage('PRICING')} className="flex min-w-[220px] items-center justify-center rounded-[1.2rem] border-2 border-slate-200 dark:border-slate-800 bg-transparent h-14 px-8 text-[11px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 transition-all hover:bg-slate-50 dark:hover:bg-slate-900">Ver Planes</button>
                                     </div>
                                 </div>
-                                <div className="relative flex justify-center items-center group">
-                                    <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full scale-75"></div>
-                                    <div className="animate-float relative z-10 w-full max-w-lg">
-                                        <div className="glass-panel p-2 rounded-[2.5rem] shadow-2xl border-4 border-white/20 overflow-hidden">
-                                            <img alt="SapiSoft Interface" className="object-cover w-full h-full rounded-3xl" src={heroImage || "https://images.unsplash.com/photo-1556155092-490a1ba16284?q=80&w=2670&auto=format&fit=crop"} />
+                                <div className="relative flex justify-center items-center group max-w-md mx-auto lg:max-w-none">
+                                    <div className="absolute inset-0 bg-primary/10 blur-3xl rounded-full scale-75"></div>
+                                    <div className="animate-float relative z-10 w-full">
+                                        <div className="glass-panel p-1.5 rounded-[2rem] shadow-2xl border-4 border-white/20 overflow-hidden">
+                                            <img alt="SapiSoft Interface" className="object-cover w-full h-full rounded-2xl" src={heroImage || "https://images.unsplash.com/photo-1556155092-490a1ba16284?q=80&w=2670&auto=format&fit=crop"} />
                                         </div>
                                     </div>
                                 </div>
@@ -251,7 +244,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onResetPasswo
     return (
         <div className="bg-background-light dark:bg-background-dark text-text-dark dark:text-gray-100 font-display transition-colors duration-300 min-h-screen flex flex-col">
             
-            {/* PUBLIC NAVBAR (PADDLE COMPLIANCE) */}
+            {/* PUBLIC NAVBAR */}
             <header className="sticky top-0 z-[100] w-full px-4 py-3 sm:px-6 lg:px-8">
                 <div className="glass-panel mx-auto max-w-7xl rounded-full px-6 py-3 shadow-sm flex items-center justify-between border border-white/10">
                     <button onClick={() => setCurrentPage('HOME')} className="flex items-center gap-3 group">
@@ -266,7 +259,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onResetPasswo
                                 onClick={() => setCurrentPage(page as PublicPage)}
                                 className={`text-[10px] font-black uppercase tracking-[0.2em] transition-colors ${currentPage === page ? 'text-primary' : 'text-slate-500 hover:text-primary'}`}
                             >
-                                {page === 'HOME' ? 'Inicio' : 'Planes y Precios'}
+                                {page === 'HOME' ? 'Inicio' : 'Planes'}
                             </button>
                         ))}
                     </div>
@@ -281,7 +274,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onResetPasswo
                 {renderContent()}
             </main>
             
-            {/* PUBLIC FOOTER (PADDLE COMPLIANCE) */}
+            {/* PUBLIC FOOTER */}
             <footer className="bg-slate-50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-800 mt-auto">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
                     <div className="grid md:grid-cols-4 lg:grid-cols-5 gap-12">
@@ -324,9 +317,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onResetPasswo
                             </div>
                         </div>
                     </div>
-                    <div className="mt-12 border-t border-slate-200 dark:border-slate-800 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div className="mt-12 border-t border-slate-200 dark:border-slate-800 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-center sm:text-left">
                         <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">&copy; {new Date().getFullYear()} SapiSoft Inc. Todos los derechos reservados.</p>
-                        <div className="flex items-center gap-4"><Globe size={14} className="text-slate-300"/><span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Cloud Servers: Global Coverage Active</span></div>
+                        <div className="flex items-center gap-4"><Globe size={14} className="text-slate-300"/><span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Cloud Servers: Coverage Active</span></div>
                     </div>
                 </div>
             </footer>
@@ -337,25 +330,31 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onResetPasswo
                     <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setShowLoginModal(false)}></div>
                     <div className="relative w-full max-w-md bg-white dark:bg-slate-900 border border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
                         <button onClick={() => setShowLoginModal(false)} className="absolute top-6 right-6 text-slate-400 hover:text-red-500 z-10 transition-colors"><X size={24}/></button>
-                        <div className="p-10">
+                        <div className="p-8 md:p-10">
                             <div className="flex flex-col items-center mb-10">
-                                <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center shadow-2xl mb-4"><span className="text-white font-black text-3xl">S</span></div>
+                                <div className="w-14 h-14 bg-primary rounded-2xl flex items-center justify-center shadow-2xl mb-4"><span className="text-white font-black text-2xl">S</span></div>
                                 <h2 className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tighter">Acceso al Sistema</h2>
-                                <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-1">Identifícate para continuar</p>
+                                <p className="text-slate-400 font-bold text-[9px] uppercase tracking-widest mt-1">Gestión Empresarial Inteligente</p>
                             </div>
                             {!isRecovery ? (
                                 <form onSubmit={handleSubmit} className="space-y-6">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Usuario / Email</label>
-                                        <div className="relative group"><User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-primary transition-colors" /><input type="text" className="block w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-950 border-2 border-slate-100 dark:border-slate-800 rounded-2xl text-slate-900 dark:text-white font-bold focus:border-primary outline-none transition-all" placeholder="ADMIN" value={username} onChange={(e) => setUsername(e.target.value)} /></div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Usuario / Email</label>
+                                        <div className="relative group">
+                                            <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-primary transition-colors" />
+                                            <input type="text" className="block w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-950 border-2 border-slate-100 dark:border-slate-800 rounded-2xl text-slate-900 dark:text-white font-bold focus:border-primary outline-none transition-all" placeholder="ADMIN" value={username} onChange={(e) => setUsername(e.target.value)} />
+                                        </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Contraseña</label>
-                                        <div className="relative group"><Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-primary transition-colors" /><input type="password" className="block w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-950 border-2 border-slate-100 dark:border-slate-800 rounded-2xl text-slate-900 dark:text-white font-bold focus:border-primary outline-none transition-all" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Contraseña</label>
+                                        <div className="relative group">
+                                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-primary transition-colors" />
+                                            <input type="password" className="block w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-950 border-2 border-slate-100 dark:border-slate-800 rounded-2xl text-slate-900 dark:text-white font-bold focus:border-primary outline-none transition-all" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
+                                        </div>
                                     </div>
-                                    {error && (<div className="p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-600 text-xs font-black uppercase tracking-tight"><AlertOctagon size={20} /> {error}</div>)}
-                                    <button type="submit" disabled={loading} className="w-full py-5 bg-primary text-white font-black rounded-2xl shadow-2xl transition-all flex items-center justify-center gap-3 disabled:opacity-50 uppercase tracking-widest text-xs active:scale-95 hover:bg-primary-600 hover:shadow-primary/30">
-                                        {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <>Ingresar ahora <ArrowRight size={20} /></>}
+                                    {error && (<div className="p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-600 text-[10px] font-black uppercase tracking-tight"><AlertOctagon size={18} /> {error}</div>)}
+                                    <button type="submit" disabled={loading} className="w-full py-5 bg-primary text-white font-black rounded-2xl shadow-2xl transition-all flex items-center justify-center gap-3 disabled:opacity-50 uppercase tracking-widest text-[11px] active:scale-95 hover:bg-primary-600">
+                                        {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <>Ingresar ahora <ArrowRight size={18} /></>}
                                     </button>
                                 </form>
                             ) : (

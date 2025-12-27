@@ -93,7 +93,7 @@ export interface TenantInvoice {
     paymentLink?: string; 
     externalId?: string;  
     paddleId?: string;    
-    paddleTransactionId?: string; // Nuevo: Para tracking de checkout completado
+    paddleTransactionId?: string; 
 }
 
 export interface MasterAccount {
@@ -218,6 +218,7 @@ export interface SaleRecord {
     exchangeRate: number;
     items: CartItem[];
     paymentBreakdown: PaymentBreakdown;
+    detailedPayments?: any[];
     user: string;
 }
 
@@ -232,6 +233,7 @@ export interface PurchaseRecord {
     exchangeRate: number;
     items: CartItem[];
     paymentCondition: 'Contado' | 'Credito';
+    detailedPayments?: any[];
     user: string;
 }
 
@@ -297,6 +299,7 @@ export interface CashMovement {
   relatedItems?: CashItemDetail[];
   financialType?: 'Fijo' | 'Variable';
   category?: string;
+  sequentialId?: string;
 }
 
 export interface PaymentBreakdown {
